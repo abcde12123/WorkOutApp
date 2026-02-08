@@ -1,0 +1,46 @@
+name: Generate update.json on Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Get version info
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION_NAME="${TAG#v}"
+
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Build update.json
+        run: |
+          VERSION_CODE=$(date +%Y%m%d%H%M)
+
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/app-release.apk"
+
+          cat > update/update.json <<EOF
+          {
+            "versionCode": $VERSION_CODE,
+            "versionName": "${{ steps.version.outputs.version_name }}",
+            "updateLog": "版本 ${{ steps.version.outputs.version_name }} 发布",
+            "downloadUrl": "$DOWNLOAD_URL"
+          }
+          EOF
+
+      - name: Commit and push update.json
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add update/update.json
+          git commit -m "chore: update version ${{ steps.version.outputs.version_name }}"
+          git push
