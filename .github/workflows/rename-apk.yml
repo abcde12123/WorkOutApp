@@ -9,16 +9,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout 仓库
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # 防 detached HEAD
+          fetch-depth: 0  # 避免 detached HEAD
 
-      - name: Setup NodeJS (for GH CLI)
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
+      # 2️⃣ 安装 GitHub CLI
       - name: Install GitHub CLI
         run: |
           sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key C99B11DEB97541F0
@@ -26,40 +23,44 @@ jobs:
           sudo apt update
           sudo apt install gh -y
 
+      # 3️⃣ 登录 GitHub CLI
       - name: Authenticate GH CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh auth setup-git
 
-      - name: Rename APK Asset
+      # 4️⃣ 获取版本号并去掉 v 前缀
+      - name: Set version
+        run: |
+          TAG_NAME=${{ github.event.release.tag_name }}
+          VERSION=${TAG_NAME#v}  # 去掉开头的 v
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Using version: $VERSION"
+
+      # 5️⃣ 下载 APK Asset（假设 Release 里只有一个 APK）
+      - name: Download APK
+        run: |
+          gh release download ${{ github.event.release.tag_name }} --pattern '*.apk'
+
+      # 6️⃣ 重命名 APK
+      - name: Rename APK
+        run: |
+          APK_FILE=$(ls *.apk | head -n 1)  # 找到 APK
+          NEW_NAME="update_$VERSION.apk"
+          mv "$APK_FILE" "$NEW_NAME"
+          echo "Renamed $APK_FILE -> $NEW_NAME"
+
+      # 7️⃣ 删除旧 Asset 并上传新 APK
+      - name: Replace Release APK
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Release tag: ${{ github.event.release.tag_name }}"
-
-          # 获取 release ID
-          RELEASE_ID=$(gh release view ${{ github.event.release.tag_name }} --json id --jq '.id')
-          echo "Release ID: $RELEASE_ID"
-
-          # 获取 asset ID (假设你只有一个 APK)
-          ASSET_ID=$(gh release view ${{ github.event.release.tag_name }} --json assets --jq '.assets[0].id')
-          echo "Asset ID: $ASSET_ID"
-
-          # 下载 asset
-          gh release download ${{ github.event.release.tag_name }} --pattern '*.apk'
-
-          # 找到 APK 文件
-          APK_FILE=$(ls *.apk)
-          echo "APK file: $APK_FILE"
-
-          # 重命名
-          NEW_NAME="update_${{ github.event.release.tag_name }}.apk"
-          mv "$APK_FILE" "$NEW_NAME"
-          echo "Renamed to: $NEW_NAME"
-
-          # 删除原 asset
-          gh release delete-asset $ASSET_ID --yes
-
-          # 上传新文件
-          gh release upload ${{ github.event.release.tag_name }} "$NEW_NAME"
+          ASSETS=$(gh release view ${{ github.event.release.tag_name }} --json assets --jq '.assets[].name')
+          for asset in $ASSETS; do
+            if [[ $asset == *.apk ]]; then
+              ASSET_ID=$(gh release view ${{ github.event.release.tag_name }} --json assets --jq ".assets[] | select(.name==\"$asset\") | .id")
+              gh release delete-asset $ASSET_ID --yes
+            fi
+          done
+          gh release upload ${{ github.event.release.tag_name }} "update_$VERSION.apk"
