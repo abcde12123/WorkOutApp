@@ -4,13 +4,18 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+
 jobs:
   generate-update:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout main branch
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Get version info
         id: version
@@ -41,12 +46,8 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git fetch origin main
-          git checkout main
-
           git add update/update.json
 
           git commit -m "chore: update version ${{ steps.version.outputs.version_name }}" || echo "No changes"
 
-          git push origin main
-
+          git push
