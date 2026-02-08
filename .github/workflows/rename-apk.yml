@@ -23,8 +23,10 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Using version: $VERSION"
 
-      # 3️⃣ 下载 APK Asset（假设 Release 里只有一个 APK）
+      # 3️⃣ 下载 APK Asset
       - name: Download APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release download ${{ github.event.release.tag_name }} --pattern '*.apk'
 
@@ -39,7 +41,7 @@ jobs:
       # 5️⃣ 替换 Release APK
       - name: Replace Release APK
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ASSETS=$(gh release view ${{ github.event.release.tag_name }} --json assets --jq '.assets[].name')
           for asset in $ASSETS; do
