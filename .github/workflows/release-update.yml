@@ -1,4 +1,4 @@
-name: Generate update.json on Release
+name: Auto Update JSON
 
 on:
   release:
@@ -12,42 +12,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout main branch
+      - name: Checkout main
         uses: actions/checkout@v4
         with:
           ref: main
 
-      - name: Get version info
-        id: version
+      - name: Generate update.json
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
+          TAG="${{ github.event.release.tag_name }}"
           VERSION_NAME="${TAG#v}"
+          VERSION_CODE=${{ github.run_number }}
 
-          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          # 获取 Release 简介，并做 JSON 转义
+          LOG=$(printf '%s' "${{ github.event.release.body }}" | jq -Rs .)
 
-      - name: Build update.json
-        run: |
-          VERSION_CODE=$(date +%Y%m%d%H%M)
-
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/app-release.apk"
+          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/app-release.apk"
 
           cat > update/update.json <<EOF
           {
             "versionCode": $VERSION_CODE,
-            "versionName": "${{ steps.version.outputs.version_name }}",
-            "updateLog": "版本 ${{ steps.version.outputs.version_name }} 发布",
-            "downloadUrl": "$DOWNLOAD_URL"
+            "versionName": "$VERSION_NAME",
+            "updateLog": $LOG,
+            "downloadUrl": "$URL"
           }
           EOF
 
-      - name: Commit and push update.json
+      - name: Commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
           git add update/update.json
-
-          git commit -m "chore: update version ${{ steps.version.outputs.version_name }}" || echo "No changes"
-
+          git commit -m "chore: update ${{ github.event.release.tag_name }}" || echo "No changes"
           git push
