@@ -26,7 +26,7 @@ jobs:
           # 获取 Release 简介，并做 JSON 转义
           LOG=$(printf '%s' "${{ github.event.release.body }}" | jq -Rs .)
 
-          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/app-release.apk"
+          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/update_${VERSION_NAME}.apk"
 
           cat > update/update.json <<EOF
           {
