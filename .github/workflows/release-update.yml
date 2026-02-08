@@ -21,7 +21,7 @@ jobs:
         run: |
           TAG="${{ github.event.release.tag_name }}"
           VERSION_NAME="${TAG#v}"
-          VERSION_CODE=${{ github.run_number }}
+          VERSION_CODE=$(date +%Y%m%d%H%M)
 
           # 获取 Release 简介，并做 JSON 转义
           LOG=$(printf '%s' "${{ github.event.release.body }}" | jq -Rs .)
