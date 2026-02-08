@@ -15,11 +15,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2️⃣ Setup GitHub CLI
-      - name: Setup GitHub CLI
-        uses: cli/gh-actions@v2
-
-      # 3️⃣ 获取版本号并去掉 v 前缀
+      # 2️⃣ 获取版本号并去掉 v 前缀
       - name: Set version
         run: |
           TAG_NAME=${{ github.event.release.tag_name }}
@@ -27,12 +23,12 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Using version: $VERSION"
 
-      # 4️⃣ 下载 APK Asset
+      # 3️⃣ 下载 APK Asset（假设 Release 里只有一个 APK）
       - name: Download APK
         run: |
           gh release download ${{ github.event.release.tag_name }} --pattern '*.apk'
 
-      # 5️⃣ 重命名 APK
+      # 4️⃣ 重命名 APK
       - name: Rename APK
         run: |
           APK_FILE=$(ls *.apk | head -n 1)
@@ -40,7 +36,7 @@ jobs:
           mv "$APK_FILE" "$NEW_NAME"
           echo "Renamed $APK_FILE -> $NEW_NAME"
 
-      # 6️⃣ 替换 Release APK
+      # 5️⃣ 替换 Release APK
       - name: Replace Release APK
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
